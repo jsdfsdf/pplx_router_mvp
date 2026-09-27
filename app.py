@@ -82,12 +82,13 @@ def display_message(message):
                     url = citation.get("url") if isinstance(citation, dict) else citation
                     source_id = citation.get("id") if isinstance(citation, dict) else index
                     if isinstance(url, str) and urlparse(url).scheme in ("https", "http"):
-                        st.link_button(f"[{source_id}] {urlparse(url).netloc}", url)
+                        st.link_button(
+                            f"[{source_id}] {urlparse(url).netloc}", url, width="stretch"
+                        )
 
 
 st.set_page_config(page_title="预测问答 · Market search", page_icon="🔎")
-st.title("预测问答")
-st.caption("用中文或英文提问，了解 Polymarket 预测与相关新闻。")
+st.subheader("预测问答 · Market search", anchor=False)
 st.session_state.setdefault("authenticated", False)
 st.session_state.setdefault("messages", [])
 
@@ -97,9 +98,10 @@ if not password:
     st.stop()
 
 if not st.session_state.authenticated:
+    st.caption("用中文或英文，了解 Polymarket 预测与相关新闻。")
     with st.form("login", clear_on_submit=True):
         entered = st.text_input("访问密码 / Password", type="password")
-        submitted = st.form_submit_button("进入 / Sign in", type="primary")
+        submitted = st.form_submit_button("进入 / Sign in", type="primary", width="stretch")
     if submitted:
         if hmac.compare_digest(entered.encode("utf-8"), password.encode("utf-8")):
             st.session_state.authenticated = True
@@ -108,21 +110,26 @@ if not st.session_state.authenticated:
     st.stop()
 
 with st.container(horizontal=True):
-    if st.button("新对话 / New chat"):
+    if st.button("新对话 / New chat", icon=":material/add_comment:"):
         st.session_state.messages = []
         st.session_state.pop("search_error", None)
         st.rerun()
-    if st.button("退出 / Sign out"):
-        st.session_state.clear()
-        st.rerun()
+    with st.popover("菜单 / Menu", icon=":material/menu:"):
+        st.caption("退出将清空对话。 / Signing out clears this chat.")
+        if st.button("退出 / Sign out", width="stretch"):
+            st.session_state.clear()
+            st.rerun()
 
 api_key = setting("PERPLEXITY_API_KEY")
 if not api_key:
     st.info("搜索服务尚未配置，请联系管理员。 / PERPLEXITY_API_KEY is not configured.")
     st.stop()
 
+starter_prompt = None
 if not st.session_state.messages:
-    st.info("试试：Polymarket 如何预测下一次美联储利率决议？")
+    st.caption("用中文或英文提问，或点选下面的问题。 / Ask or tap to start.")
+    if st.button("Polymarket 如何预测下一次美联储利率决议？", width="stretch"):
+        starter_prompt = "Polymarket 如何预测下一次美联储利率决议？"
 
 for message in st.session_state.messages:
     display_message(message)
@@ -131,9 +138,10 @@ pending = bool(st.session_state.messages and st.session_state.messages[-1]["role
 if st.session_state.get("search_error"):
     st.error(st.session_state.search_error)
 retry = False
-if pending and st.button("重试上个问题 / Retry last question"):
+if pending and st.button("重试 / Retry", icon=":material/refresh:", width="stretch"):
     retry = True
 prompt = st.chat_input("输入问题 / Ask a question", max_chars=4000, submit_mode="disable")
+prompt = prompt or starter_prompt
 if prompt and prompt.strip():
     if len(prompt) > 4000:
         st.error("问题请控制在 4000 字符以内。 / Please use at most 4,000 characters.")
